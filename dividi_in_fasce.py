@@ -8,7 +8,7 @@ Versione 1.0 - Base
 import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
-import math
+import img2pdf
 
 def stampa_step(messaggio):
     """Stampa un messaggio con formatting per gli step"""
@@ -273,11 +273,30 @@ def main():
                     fascia['altezza']
                 )
                 
-                # Salva come PDF (per ora come PNG per test)
-                nome_output = f"esportati/{nome_file}_fascia_{fascia['numero']:02d}.png"
-                fascia_finale.save(nome_output, "PNG", optimize=False)
-                
-                stampa_successo(f"Fascia {fascia['numero']} salvata: {nome_output}")
+                # Salva PNG come sempre
+                nome_temp_png = f"esportati/{nome_file}_fascia_{fascia['numero']:02d}_temp.png"
+                fascia_finale.save(nome_temp_png, "PNG", optimize=False)
+
+                # Converti in PDF lossless
+                nome_output_pdf = f"esportati/{nome_file}_fascia_{fascia['numero']:02d}.pdf"
+                try:
+                    with open(nome_output_pdf, "wb") as f:
+                        f.write(img2pdf.convert(nome_temp_png))
+                    
+                    # Rimuovi il file PNG temporaneo
+                    os.remove(nome_temp_png)
+                    
+                    # Mostra dimensione PDF
+                    size_pdf = os.path.getsize(nome_output_pdf) // 1024 // 1024
+                    stampa_successo(f"Fascia {fascia['numero']} salvata: {nome_output_pdf} ({size_pdf}MB)")
+                    
+                except Exception as e:
+                    stampa_errore(f"Errore nel salvataggio PDF della fascia {fascia['numero']}: {e}")
+                    # Se fallisce, mantieni almeno il PNG temporaneo
+                    if os.path.exists(nome_temp_png):
+                        nome_fallback = nome_temp_png.replace("_temp.png", ".png")
+                        os.rename(nome_temp_png, nome_fallback)
+                        stampa_successo(f"Fascia {fascia['numero']} salvata come PNG: {nome_fallback}")
                 
             except Exception as e:
                 stampa_errore(f"Errore nell'elaborazione della fascia {fascia['numero']}: {e}")
