@@ -84,42 +84,42 @@ def crea_cartella_esportati():
     else:
         stampa_successo("Cartella 'esportati' già esistente")
 
-def pixel_da_mm(mm, dpi=120):
+def pixel_da_mm(mm, dpi=300):
     """Converte millimetri in pixel basandosi sui DPI"""
     return int((mm * dpi) / 25.4)
 
 def calcola_fasce(larghezza, altezza, numero_fasce):
-    """Calcola le dimensioni e posizioni delle fasce"""
-    stampa_step(f"Calcolo divisione in {numero_fasce} fasce...")
+    """Calcola le dimensioni e posizioni delle fasce (colonne verticali)"""
+    stampa_step(f"Calcolo divisione in {numero_fasce} fasce verticali...")
     
-    altezza_fascia = altezza // numero_fasce
+    larghezza_fascia = larghezza // numero_fasce
     fasce = []
     
     for i in range(numero_fasce):
-        y_start = i * altezza_fascia
+        x_start = i * larghezza_fascia
         # L'ultima fascia prende tutto il rimanente
         if i == numero_fasce - 1:
-            y_end = altezza
+            x_end = larghezza
         else:
-            y_end = (i + 1) * altezza_fascia
+            x_end = (i + 1) * larghezza_fascia
         
-        altezza_effettiva = y_end - y_start
+        larghezza_effettiva = x_end - x_start
         
         fasce.append({
             'numero': i + 1,
-            'x': 0,
-            'y': y_start,
-            'larghezza': larghezza,
-            'altezza': altezza_effettiva,
-            'box': (0, y_start, larghezza, y_end)
+            'x': x_start,
+            'y': 0,
+            'larghezza': larghezza_effettiva,
+            'altezza': altezza,
+            'box': (x_start, 0, x_end, altezza)
         })
         
-        print(f"   📐 Fascia {i+1}: {larghezza}x{altezza_effettiva} pixel (Y: {y_start}-{y_end})")
+        print(f"   📐 Fascia {i+1}: {larghezza_effettiva}x{altezza} pixel (X: {x_start}-{x_end})")
     
-    stampa_successo(f"Divisione calcolata: {numero_fasce} fasce")
+    stampa_successo(f"Divisione calcolata: {numero_fasce} fasce verticali")
     return fasce
 
-def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larghezza, altezza_fascia):
+def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larghezza_fascia, altezza):
     """Crea una fascia con il rettangolo bianco, testo e logo"""
     stampa_step(f"Elaborazione fascia {numero_fascia}...")
     
@@ -128,19 +128,19 @@ def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larg
     margine_interno = pixel_da_mm(5)  # 5mm
     
     # Crea nuova immagine con spazio aggiuntivo per il footer
-    nuova_altezza = altezza_fascia + altezza_footer
-    immagine_finale = Image.new('RGB', (larghezza, nuova_altezza), 'white')
+    nuova_altezza = altezza + altezza_footer
+    immagine_finale = Image.new('RGB', (larghezza_fascia, nuova_altezza), 'white')
     
     # Incolla l'immagine originale
     immagine_finale.paste(immagine_fascia, (0, 0))
     
-    # Crea il rettangolo bianco (sovrapposto)
+    # Crea il rettangolo bianco (sovrapposto in basso)
     draw = ImageDraw.Draw(immagine_finale)
-    y_footer = altezza_fascia - altezza_footer
-    draw.rectangle([0, y_footer, larghezza, nuova_altezza], fill='white', outline=None)
+    y_footer = altezza - altezza_footer
+    draw.rectangle([0, y_footer, larghezza_fascia, nuova_altezza], fill='white', outline=None)
     
     # Prepara il testo
-    testo_sx = f"{nome_file} - dimensioni fascia ({larghezza} x {altezza_fascia}) - Parete C{numero_fascia}"
+    testo_sx = f"{nome_file} - dimensioni fascia ({larghezza_fascia} x {altezza}) - Parete C{numero_fascia}"
     
     # Carica font (prova diversi font)
     try:
@@ -164,7 +164,7 @@ def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larg
     draw.text((margine_interno, y_testo), testo_sx, fill='black', font=font)
     
     # Ridimensiona e posiziona il logo a destra
-    logo_area_larghezza = larghezza // 4  # Il logo occupa 1/4 della larghezza
+    logo_area_larghezza = larghezza_fascia // 4  # Il logo occupa 1/4 della larghezza
     logo_area_altezza = altezza_footer - (2 * margine_interno)
     
     # Ridimensiona il logo mantenendo le proporzioni
@@ -175,7 +175,7 @@ def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larg
     logo_ridimensionato = logo.resize((nuova_larghezza_logo, nuova_altezza_logo), Image.Resampling.LANCZOS)
     
     # Posiziona il logo in basso a destra
-    x_logo = larghezza - nuova_larghezza_logo - margine_interno
+    x_logo = larghezza_fascia - nuova_larghezza_logo - margine_interno
     y_logo = y_footer + margine_interno
     
     # Se il logo ha trasparenza, gestiscila
@@ -184,7 +184,7 @@ def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larg
     else:
         immagine_finale.paste(logo_ridimensionato, (x_logo, y_logo))
     
-    print(f"   ✨ Fascia {numero_fascia} elaborata ({larghezza}x{nuova_altezza} pixel)")
+    print(f"   ✨ Fascia {numero_fascia} elaborata ({larghezza_fascia}x{nuova_altezza} pixel)")
     return immagine_finale
 
 def main():
