@@ -84,7 +84,7 @@ def crea_cartella_esportati():
     else:
         stampa_successo("Cartella 'esportati' già esistente")
 
-def pixel_da_mm(mm, dpi=300):
+def pixel_da_mm(mm, dpi=120):
     """Converte millimetri in pixel basandosi sui DPI"""
     return int((mm * dpi) / 25.4)
 
@@ -140,12 +140,12 @@ def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larg
     draw.rectangle([0, y_footer, larghezza_fascia, nuova_altezza], fill='white', outline=None)
     
     # Prepara il testo
-    testo_sx = f"{nome_file} - dimensioni fascia ({larghezza_fascia} x {altezza}) - Parete C{numero_fascia}"
+    testo_sx = f"{nome_file} - Parete C{numero_fascia}"
     
     # Carica font (prova diversi font)
     try:
         # Prova font di sistema comuni
-        font_size = max(12, altezza_footer // 6)  # Font proporzionale all'altezza
+        font_size = max(48, int(altezza_footer // 3))  # Font proporzionale all'altezza
         try:
             font = ImageFont.truetype("arial.ttf", font_size)
         except:
@@ -160,12 +160,21 @@ def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larg
         font = ImageFont.load_default()
     
     # Posiziona il testo a sinistra
-    y_testo = y_footer + margine_interno
+    centro_footer = y_footer + (altezza_footer // 2)
+    y_testo = centro_footer + (font_size * 0.1)  # Sposta leggermente sotto il centro
+
+    # # DEBUG per vedere i valori
+    # print(f"   📝 y_footer: {y_footer}")
+    # print(f"   📝 altezza_footer: {altezza_footer}")
+    # print(f"   📝 centro calcolato: {y_footer + (altezza_footer // 2)}")
+    # print(f"   📝 y_testo finale: {y_testo}")
+
     draw.text((margine_interno, y_testo), testo_sx, fill='black', font=font)
+
     
     # Ridimensiona e posiziona il logo a destra
-    logo_area_larghezza = larghezza_fascia // 4  # Il logo occupa 1/4 della larghezza
-    logo_area_altezza = altezza_footer - (2 * margine_interno)
+    logo_area_larghezza = larghezza_fascia // 1.1  # Mantieni questo
+    logo_area_altezza = altezza_footer * 1.1  # DOPPIA l'altezza disponibile (ignora i margini)
     
     # Ridimensiona il logo mantenendo le proporzioni
     logo_ratio = min(logo_area_larghezza / logo.size[0], logo_area_altezza / logo.size[1])
