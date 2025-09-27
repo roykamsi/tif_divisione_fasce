@@ -84,6 +84,109 @@ def crea_cartella_esportati():
     else:
         stampa_successo("Cartella 'esportati' già esistente")
 
+def pixel_da_mm(mm, dpi=120):
+    """Converte millimetri in pixel basandosi sui DPI"""
+    return int((mm * dpi) / 25.4)
+
+def calcola_fasce(larghezza, altezza, numero_fasce):
+    """Calcola le dimensioni e posizioni delle fasce"""
+    stampa_step(f"Calcolo divisione in {numero_fasce} fasce...")
+    
+    altezza_fascia = altezza // numero_fasce
+    fasce = []
+    
+    for i in range(numero_fasce):
+        y_start = i * altezza_fascia
+        # L'ultima fascia prende tutto il rimanente
+        if i == numero_fasce - 1:
+            y_end = altezza
+        else:
+            y_end = (i + 1) * altezza_fascia
+        
+        altezza_effettiva = y_end - y_start
+        
+        fasce.append({
+            'numero': i + 1,
+            'x': 0,
+            'y': y_start,
+            'larghezza': larghezza,
+            'altezza': altezza_effettiva,
+            'box': (0, y_start, larghezza, y_end)
+        })
+        
+        print(f"   📐 Fascia {i+1}: {larghezza}x{altezza_effettiva} pixel (Y: {y_start}-{y_end})")
+    
+    stampa_successo(f"Divisione calcolata: {numero_fasce} fasce")
+    return fasce
+
+def crea_fascia_con_footer(immagine_fascia, numero_fascia, nome_file, logo, larghezza, altezza_fascia):
+    """Crea una fascia con il rettangolo bianco, testo e logo"""
+    stampa_step(f"Elaborazione fascia {numero_fascia}...")
+    
+    # Calcola altezza rettangolo bianco (15mm)
+    altezza_footer = pixel_da_mm(15)  # 15mm
+    margine_interno = pixel_da_mm(5)  # 5mm
+    
+    # Crea nuova immagine con spazio aggiuntivo per il footer
+    nuova_altezza = altezza_fascia + altezza_footer
+    immagine_finale = Image.new('RGB', (larghezza, nuova_altezza), 'white')
+    
+    # Incolla l'immagine originale
+    immagine_finale.paste(immagine_fascia, (0, 0))
+    
+    # Crea il rettangolo bianco (sovrapposto)
+    draw = ImageDraw.Draw(immagine_finale)
+    y_footer = altezza_fascia - altezza_footer
+    draw.rectangle([0, y_footer, larghezza, nuova_altezza], fill='white', outline=None)
+    
+    # Prepara il testo
+    testo_sx = f"{nome_file} - dimensioni fascia ({larghezza} x {altezza_fascia}) - Parete C{numero_fascia}"
+    
+    # Carica font (prova diversi font)
+    try:
+        # Prova font di sistema comuni
+        font_size = max(12, altezza_footer // 6)  # Font proporzionale all'altezza
+        try:
+            font = ImageFont.truetype("arial.ttf", font_size)
+        except:
+            try:
+                font = ImageFont.truetype("Arial.ttf", font_size)
+            except:
+                try:
+                    font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", font_size)
+                except:
+                    font = ImageFont.load_default()
+    except:
+        font = ImageFont.load_default()
+    
+    # Posiziona il testo a sinistra
+    y_testo = y_footer + margine_interno
+    draw.text((margine_interno, y_testo), testo_sx, fill='black', font=font)
+    
+    # Ridimensiona e posiziona il logo a destra
+    logo_area_larghezza = larghezza // 4  # Il logo occupa 1/4 della larghezza
+    logo_area_altezza = altezza_footer - (2 * margine_interno)
+    
+    # Ridimensiona il logo mantenendo le proporzioni
+    logo_ratio = min(logo_area_larghezza / logo.size[0], logo_area_altezza / logo.size[1])
+    nuova_larghezza_logo = int(logo.size[0] * logo_ratio)
+    nuova_altezza_logo = int(logo.size[1] * logo_ratio)
+    
+    logo_ridimensionato = logo.resize((nuova_larghezza_logo, nuova_altezza_logo), Image.Resampling.LANCZOS)
+    
+    # Posiziona il logo in basso a destra
+    x_logo = larghezza - nuova_larghezza_logo - margine_interno
+    y_logo = y_footer + margine_interno
+    
+    # Se il logo ha trasparenza, gestiscila
+    if logo_ridimensionato.mode == 'RGBA':
+        immagine_finale.paste(logo_ridimensionato, (x_logo, y_logo), logo_ridimensionato)
+    else:
+        immagine_finale.paste(logo_ridimensionato, (x_logo, y_logo))
+    
+    print(f"   ✨ Fascia {numero_fascia} elaborata ({larghezza}x{nuova_altezza} pixel)")
+    return immagine_finale
+
 def main():
     """Funzione principale"""
     print("="*60)
@@ -117,7 +220,8 @@ def main():
         stampa_step(f"Caricamento dell'immagine {file_tif}...")
         try:
             immagine = Image.open(file_tif)
-            stampa_successo(f"Immagine caricata - Dimensioni: {immagine.size[0]}x{immagine.size[1]} pixel")
+            larghezza, altezza = immagine.size
+            stampa_successo(f"Immagine caricata - Dimensioni: {larghezza}x{altezza} pixel")
         except Exception as e:
             stampa_errore(f"Impossibile aprire l'immagine: {e}")
             input("\n❌ Premi INVIO per chiudere...")
@@ -137,17 +241,42 @@ def main():
         print("🎯 INIZIO PROCESSO DI DIVISIONE")
         print("="*40)
         
-        # TODO: Implementare il processo di divisione
-        stampa_step("Processo di divisione non ancora implementato...")
-        print("📋 Prossimi step da implementare:")
-        print("   - Calcolo dimensioni fasce")
-        print("   - Divisione immagine")
-        print("   - Aggiunta rettangolo bianco e testo")
-        print("   - Inserimento logo")
-        print("   - Esportazione PDF")
+        # Step 8: Calcola le fasce
+        fasce = calcola_fasce(larghezza, altezza, numero_fasce)
         
         print()
-        stampa_successo("Script completato con successo! (versione base)")
+        print("🔧 ELABORAZIONE FASCE")
+        print("="*25)
+        
+        # Step 9: Processa ogni fascia
+        for i, fascia in enumerate(fasce):
+            try:
+                # Estrai la porzione dell'immagine
+                immagine_fascia = immagine.crop(fascia['box'])
+                
+                # Crea la fascia con footer
+                fascia_finale = crea_fascia_con_footer(
+                    immagine_fascia, 
+                    fascia['numero'], 
+                    nome_file, 
+                    logo,
+                    fascia['larghezza'],
+                    fascia['altezza']
+                )
+                
+                # Salva come PDF (per ora come PNG per test)
+                nome_output = f"esportati/{nome_file}_fascia_{fascia['numero']:02d}.png"
+                fascia_finale.save(nome_output, "PNG", optimize=False)
+                
+                stampa_successo(f"Fascia {fascia['numero']} salvata: {nome_output}")
+                
+            except Exception as e:
+                stampa_errore(f"Errore nell'elaborazione della fascia {fascia['numero']}: {e}")
+                continue
+        
+        print()
+        stampa_successo(f"Processo completato! {len(fasce)} fasce create nella cartella 'esportati'")
+        print("\n📝 Nota: Al momento le fasce sono salvate in PNG. Prossimo step: conversione PDF")
         
     except KeyboardInterrupt:
         print("\n\n👋 Operazione annullata dall'utente.")
